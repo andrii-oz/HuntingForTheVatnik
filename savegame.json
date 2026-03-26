@@ -1,9 +1,9 @@
 {
-  "difficulty": "novice",
+  "difficulty": "custom",
   "music_enabled": true,
   "effects_enabled": true,
-  "enemy_count": 20,
-  "reaction_ms": 1000,
+  "enemy_count": 15,
+  "reaction_ms": 640,
   "level": 1,
   "hits": 0,
   "misses": 0
