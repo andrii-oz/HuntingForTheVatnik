@@ -21,6 +21,12 @@ class BaseScene(ABC):
         self.context = context
         self.signal = SceneSignal()
 
+    def on_enter(self) -> None:
+        return
+
+    def on_exit(self) -> None:
+        return
+
     @abstractmethod
     def handle_event(self, event: pygame.event.Event) -> None:
         ...

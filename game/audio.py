@@ -18,6 +18,7 @@ class AudioManager:
         self.root_dir = root_dir
         self.enabled = False
         self._sounds: dict[str, pygame.mixer.Sound | SilentSound] = {}
+        self._current_music_path: str | None = None
 
         try:
             pygame.mixer.init()
@@ -39,3 +40,27 @@ class AudioManager:
         sound = self._sounds.get(key)
         if sound is not None:
             sound.play()
+
+    def play_music(self, relative_path: str, loop: int = -1, volume: float = 0.7) -> None:
+        if not self.enabled:
+            return
+
+        path = self.root_dir / relative_path
+        if not path.exists():
+            return
+
+        normalized = path.as_posix()
+        if self._current_music_path == normalized and pygame.mixer.music.get_busy():
+            return
+
+        pygame.mixer.music.load(normalized)
+        pygame.mixer.music.set_volume(max(0.0, min(1.0, volume)))
+        pygame.mixer.music.play(loop)
+        self._current_music_path = normalized
+
+    def stop_music(self) -> None:
+        if not self.enabled:
+            return
+
+        pygame.mixer.music.stop()
+        self._current_music_path = None

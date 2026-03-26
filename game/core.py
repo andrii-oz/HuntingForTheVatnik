@@ -34,6 +34,7 @@ def run_game() -> None:
     )
 
     current_scene = SplashScene(context)
+    current_scene.on_enter()
     running = True
 
     while running:
@@ -54,11 +55,14 @@ def run_game() -> None:
 
         signal = current_scene.consume_signal()
         if signal.quit_game:
+            current_scene.on_exit()
             running = False
             continue
 
         if signal.next_scene is not None:
+            current_scene.on_exit()
             current_scene = _build_scene(signal.next_scene, context, signal.payload)
+            current_scene.on_enter()
 
     pygame.quit()
 
