@@ -17,6 +17,8 @@ class AudioManager:
     def __init__(self, root_dir: Path) -> None:
         self.root_dir = root_dir
         self.enabled = False
+        self.music_enabled = True
+        self.effects_enabled = True
         self._sounds: dict[str, pygame.mixer.Sound | SilentSound] = {}
         self._current_music_path: str | None = None
 
@@ -25,6 +27,13 @@ class AudioManager:
             self.enabled = True
         except pygame.error:
             self.enabled = False
+
+    def set_toggles(self, music_enabled: bool, effects_enabled: bool) -> None:
+        self.music_enabled = music_enabled
+        self.effects_enabled = effects_enabled
+
+        if not self.music_enabled:
+            self.stop_music()
 
     def load_sound(self, key: str, relative_path: str) -> None:
         if key in self._sounds:
@@ -37,12 +46,15 @@ class AudioManager:
             self._sounds[key] = SilentSound()
 
     def play(self, key: str) -> None:
+        if not self.effects_enabled:
+            return
+
         sound = self._sounds.get(key)
         if sound is not None:
             sound.play()
 
     def play_music(self, relative_path: str, loop: int = -1, volume: float = 0.7) -> None:
-        if not self.enabled:
+        if not self.enabled or not self.music_enabled:
             return
 
         path = self.root_dir / relative_path

@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import random
 
@@ -10,24 +10,34 @@ from game.levels.base import BaseLevel, LevelResult
 class LevelOne(BaseLevel):
     level_id = "level_one"
 
-    def __init__(self, screen_size: tuple[int, int], reaction_time: float) -> None:
-        super().__init__(screen_size, reaction_time)
+    def __init__(self, screen_size: tuple[int, int], reaction_time: float, enemy_count: int = 1) -> None:
+        super().__init__(screen_size, reaction_time, enemy_count=enemy_count)
         self.font = pygame.font.Font(None, 42)
+        self.small_font = pygame.font.Font(None, 34)
         self.target_radius = 36
         self.target_pos = (screen_size[0] // 2, screen_size[1] // 2)
+
+        self.enemies_down = 0
         self.time_left = reaction_time
         self.enemy_ready_delay = 0.8
         self.enemy_visible = False
         self.state_text = "Get ready..."
 
     def start(self) -> None:
-        self._spawn_target()
+        self._start_next_enemy()
 
     def _spawn_target(self) -> None:
         margin = 120
         x = random.randint(margin, self.screen_size[0] - margin)
         y = random.randint(margin, self.screen_size[1] - margin)
         self.target_pos = (x, y)
+
+    def _start_next_enemy(self) -> None:
+        self.enemy_visible = False
+        self.enemy_ready_delay = 0.8
+        self.time_left = self.reaction_time
+        self.state_text = "Get ready..."
+        self._spawn_target()
 
     def handle_event(self, event: pygame.event.Event) -> None:
         if self.finished:
@@ -37,8 +47,12 @@ class LevelOne(BaseLevel):
             dx = event.pos[0] - self.target_pos[0]
             dy = event.pos[1] - self.target_pos[1]
             if dx * dx + dy * dy <= self.target_radius * self.target_radius:
-                self.finished = True
-                self.result = LevelResult(won=True, reason="enemy_down")
+                self.enemies_down += 1
+                if self.enemies_down >= self.enemy_count:
+                    self.finished = True
+                    self.result = LevelResult(won=True, reason="all_enemies_down")
+                else:
+                    self._start_next_enemy()
             else:
                 self.finished = True
                 self.result = LevelResult(won=False, reason="missed_shot")
@@ -68,6 +82,13 @@ class LevelOne(BaseLevel):
 
         timer_text = self.font.render(f"Time: {max(self.time_left, 0):.2f}", True, (20, 20, 20))
         surface.blit(timer_text, (width - 220, 24))
+
+        progress_text = self.small_font.render(
+            f"Enemies: {self.enemies_down}/{self.enemy_count}",
+            True,
+            (20, 20, 20),
+        )
+        surface.blit(progress_text, (32, 72))
 
         if self.enemy_visible:
             pygame.draw.circle(surface, (173, 34, 34), self.target_pos, self.target_radius)

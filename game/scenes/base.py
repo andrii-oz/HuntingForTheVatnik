@@ -52,9 +52,11 @@ class SceneContext:
     audio: "AudioManager"
     input_manager: "InputManager"
     level_registry: "LevelRegistry"
+    settings: "GameSettings"
 
 
 from game.assets import AssetManager
 from game.audio import AudioManager
 from game.input import InputManager
 from game.levels.level_registry import LevelRegistry
+from game.settings import GameSettings

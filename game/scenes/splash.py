@@ -3,6 +3,7 @@ from __future__ import annotations
 import pygame
 
 from game.scenes.base import BaseScene
+from game.settings import open_settings_window
 from game.ui import Button, ButtonStyle
 
 
@@ -14,8 +15,6 @@ class SplashScene(BaseScene):
         w, h = context.screen_size
 
         self.menu_font = pygame.font.Font(None, 64)
-        self.panel_font = pygame.font.Font(None, 42)
-        self.show_settings = False
 
         self.background = self.context.assets.load_image(
             key="intro_background",
@@ -63,7 +62,7 @@ class SplashScene(BaseScene):
             if self.start_button.hit_test(pos):
                 self.signal.next_scene = "gameplay"
             elif self.settings_button.hit_test(pos):
-                self.show_settings = not self.show_settings
+                self._open_settings_dialog()
 
     def update(self, dt: float) -> None:
         _ = dt
@@ -75,22 +74,19 @@ class SplashScene(BaseScene):
         self.start_button.draw(surface, self.menu_font, self.start_button.hit_test(mouse_pos))
         self.settings_button.draw(surface, self.menu_font, self.settings_button.hit_test(mouse_pos))
 
-        if self.show_settings:
-            self._render_settings_stub(surface)
+    def _open_settings_dialog(self) -> None:
+        updated = open_settings_window(self.context.settings)
+        if updated is None:
+            return
 
-    def _render_settings_stub(self, surface: pygame.Surface) -> None:
-        w, h = self.context.screen_size
-        panel = pygame.Rect(w // 2 - 280, h // 2 - 180, 560, 160)
+        self.context.settings.difficulty = updated.difficulty
+        self.context.settings.music_enabled = updated.music_enabled
+        self.context.settings.effects_enabled = updated.effects_enabled
 
-        overlay = pygame.Surface((w, h), pygame.SRCALPHA)
-        overlay.fill((0, 0, 0, 110))
-        surface.blit(overlay, (0, 0))
+        self.context.audio.set_toggles(
+            music_enabled=self.context.settings.music_enabled,
+            effects_enabled=self.context.settings.effects_enabled,
+        )
 
-        pygame.draw.rect(surface, (248, 251, 255), panel, border_radius=16)
-        pygame.draw.rect(surface, (70, 84, 110), panel, width=3, border_radius=16)
-
-        title = self.panel_font.render("Settings menu: next step", True, (28, 39, 58))
-        hint = self.panel_font.render("Click НАЛАШТУВАННЯ again to close", True, (50, 62, 84))
-
-        surface.blit(title, title.get_rect(center=(w // 2, h // 2 - 120)))
-        surface.blit(hint, hint.get_rect(center=(w // 2, h // 2 - 72)))
+        if self.context.settings.music_enabled:
+            self.context.audio.play_music("sound/musics/intro.wav", loop=-1, volume=0.55)

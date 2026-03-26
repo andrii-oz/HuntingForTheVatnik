@@ -11,6 +11,7 @@ from game.scenes.base import SceneContext
 from game.scenes.end import EndScene
 from game.scenes.gameplay import GameplayScene
 from game.scenes.splash import SplashScene
+from game.settings import GameSettings
 
 
 def run_game() -> None:
@@ -24,6 +25,9 @@ def run_game() -> None:
     audio = AudioManager(GAME.root_dir)
     input_manager = InputManager()
     level_registry = build_level_registry()
+    settings = GameSettings()
+
+    audio.set_toggles(music_enabled=settings.music_enabled, effects_enabled=settings.effects_enabled)
 
     context = SceneContext(
         screen_size=(DISPLAY.width, DISPLAY.height),
@@ -31,6 +35,7 @@ def run_game() -> None:
         audio=audio,
         input_manager=input_manager,
         level_registry=level_registry,
+        settings=settings,
     )
 
     current_scene = SplashScene(context)
