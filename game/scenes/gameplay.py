@@ -22,6 +22,8 @@ class GameplayScene(BaseScene):
             screen_size=self.context.screen_size,
             reaction_time=self.context.settings.reaction_ms / 1000.0,
             enemy_count=self.context.settings.enemy_count,
+            assets=self.context.assets,
+            level_number=self.start_level,
         )
         self.level.start()
 
