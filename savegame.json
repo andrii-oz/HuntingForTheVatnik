@@ -2,8 +2,8 @@
   "difficulty": "custom",
   "music_enabled": true,
   "effects_enabled": true,
-  "enemy_count": 15,
-  "reaction_ms": 640,
+  "enemy_count": 70,
+  "reaction_ms": 627,
   "level": 1,
   "hits": 0,
   "misses": 0
