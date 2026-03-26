@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import random
 
 import pygame
@@ -41,7 +42,13 @@ class LevelOne(BaseLevel):
         self.hud_image, self.hud_rect = self._load_hud()
 
         self.enemy_image = self._load_enemy_sprite()
-        self.enemy_rect = self.enemy_image.get_rect(center=self.target_pos)
+
+        self.spawn_locations = self._build_spawn_locations()
+        self.hitbox_size = self._build_hitbox_size()
+        self.current_hitbox = pygame.Rect(0, 0, self.hitbox_size, self.hitbox_size)
+        self.enemy_rect = self.enemy_image.get_rect(midbottom=self.current_hitbox.midbottom)
+
+        self._last_spawn_index: int | None = None
 
     def _load_background(self) -> pygame.Surface:
         width, height = self.screen_size
@@ -90,19 +97,58 @@ class LevelOne(BaseLevel):
         )
         return pygame.transform.smoothscale(sprite, (110, 132))
 
+    def _build_spawn_locations(self) -> list[tuple[int, int]]:
+        width, height = self.screen_size
+
+        relative_locations = [
+            (0.115, 0.355),  # top-left window: center-x, bottom-y
+            (0.115, 0.705),  # bottom-left window
+            (0.885, 0.355),  # top-right window
+            (0.885, 0.705),  # bottom-right window
+            (0.505, 0.640),  # center dumpster
+        ]
+
+        locations: list[tuple[int, int]] = []
+        min_bottom = 120
+        max_bottom = height - self.hud_rect.height - 14
+
+        for rel_x, rel_bottom_y in relative_locations:
+            cx = int(width * rel_x)
+            by = int(height * rel_bottom_y)
+            by = max(min_bottom, min(max_bottom, by))
+            locations.append((cx, by))
+
+        return locations
+
+    def _build_hitbox_size(self) -> int:
+        width, height = self.screen_size
+
+        # Base window size approximation from layout, then 80% area.
+        avg_window_w = width * 0.18
+        avg_window_h = height * 0.22
+        avg_window_area = avg_window_w * avg_window_h
+
+        hitbox_area = avg_window_area * 0.80
+        side = int(math.sqrt(hitbox_area))
+        return max(40, side)
+
     def start(self) -> None:
         self._start_next_enemy()
 
     def _spawn_target(self) -> None:
-        width, height = self.screen_size
-        margin_x = 120
-        margin_top = 100
-        margin_bottom = self.hud_rect.height + 30
+        if not self.spawn_locations:
+            cx, by = self.screen_size[0] // 2, self.screen_size[1] // 2
+        else:
+            choices = list(range(len(self.spawn_locations)))
+            if self._last_spawn_index is not None and len(choices) > 1:
+                choices.remove(self._last_spawn_index)
+            idx = random.choice(choices)
+            self._last_spawn_index = idx
+            cx, by = self.spawn_locations[idx]
 
-        x = random.randint(margin_x, width - margin_x)
-        y = random.randint(margin_top, height - margin_bottom)
-        self.target_pos = (x, y)
-        self.enemy_rect = self.enemy_image.get_rect(center=self.target_pos)
+        self.current_hitbox = pygame.Rect(0, 0, self.hitbox_size, self.hitbox_size)
+        self.current_hitbox.midbottom = (cx, by)
+        self.enemy_rect = self.enemy_image.get_rect(midbottom=(cx, by))
 
     def _start_next_enemy(self) -> None:
         self.enemy_visible = False
@@ -126,7 +172,7 @@ class LevelOne(BaseLevel):
             return
 
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and self.enemy_visible:
-            if self.enemy_rect.collidepoint(event.pos):
+            if self.current_hitbox.collidepoint(event.pos):
                 self.hits_count += 1
                 self.rounds_played += 1
                 self._finish_if_needed()
