@@ -4,7 +4,6 @@ import pygame
 
 from game.scenes.base import BaseScene
 from game.settings import GameSettings, open_settings_window
-from game.ui import Button, ButtonStyle
 
 
 class SplashScene(BaseScene):
@@ -14,8 +13,6 @@ class SplashScene(BaseScene):
         super().__init__(context)
         w, h = context.screen_size
 
-        self.menu_font = pygame.font.Font(None, 64)
-
         self.background = self.context.assets.load_image(
             key="intro_background",
             relative_path="assets/background/intro.jpg",
@@ -23,29 +20,27 @@ class SplashScene(BaseScene):
         )
         self.background = pygame.transform.smoothscale(self.background, (w, h))
 
-        blue_style = ButtonStyle(
-            base_color=(23, 92, 214),
-            hover_color=(34, 115, 243),
-            text_color=(245, 249, 255),
-            border_color=(10, 58, 150),
+        start_img = self.context.assets.load_image(
+            key="start_button_img",
+            relative_path="assets/ui/start.png",
+            fallback_color=(30, 90, 210),
         )
-        gray_style = ButtonStyle(
-            base_color=(214, 223, 233),
-            hover_color=(231, 238, 245),
-            text_color=(35, 49, 74),
-            border_color=(112, 132, 154),
+        settings_img = self.context.assets.load_image(
+            key="settings_button_img",
+            relative_path="assets/ui/setting.png",
+            fallback_color=(210, 220, 230),
         )
 
-        button_w = 420
-        button_h = 98
+        # Keep consistent visual size on different source assets.
+        self.button_w = 420
+        self.button_h = 98
+        self.start_button_image = pygame.transform.smoothscale(start_img, (self.button_w, self.button_h)).convert_alpha()
+        self.settings_button_image = pygame.transform.smoothscale(settings_img, (self.button_w, self.button_h)).convert_alpha()
+
         gap = 24
-        top_y = h // 2 - button_h - (gap // 2)
-        self.start_button = Button("ПОЧАЛИ!", pygame.Rect(w // 2 - button_w // 2, top_y, button_w, button_h), blue_style)
-        self.settings_button = Button(
-            "НАЛАШТУВАННЯ",
-            pygame.Rect(w // 2 - button_w // 2, top_y + button_h + gap, button_w, button_h),
-            gray_style,
-        )
+        top_y = h // 2 - self.button_h - (gap // 2)
+        self.start_button_rect = pygame.Rect(w // 2 - self.button_w // 2, top_y, self.button_w, self.button_h)
+        self.settings_button_rect = pygame.Rect(w // 2 - self.button_w // 2, top_y + self.button_h + gap, self.button_w, self.button_h)
 
     def on_enter(self) -> None:
         self.context.audio.play_music("sound/musics/intro.wav", loop=-1, volume=0.55)
@@ -59,9 +54,9 @@ class SplashScene(BaseScene):
 
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             pos = event.pos
-            if self.start_button.hit_test(pos):
+            if self.start_button_rect.collidepoint(pos):
                 self.signal.next_scene = "gameplay"
-            elif self.settings_button.hit_test(pos):
+            elif self.settings_button_rect.collidepoint(pos):
                 self._open_settings_dialog()
 
     def update(self, dt: float) -> None:
@@ -71,8 +66,31 @@ class SplashScene(BaseScene):
         surface.blit(self.background, (0, 0))
 
         mouse_pos = self.context.input_manager.mouse_pos
-        self.start_button.draw(surface, self.menu_font, self.start_button.hit_test(mouse_pos))
-        self.settings_button.draw(surface, self.menu_font, self.settings_button.hit_test(mouse_pos))
+        self._draw_image_button(
+            surface,
+            self.start_button_image,
+            self.start_button_rect,
+            hovered=self.start_button_rect.collidepoint(mouse_pos),
+        )
+        self._draw_image_button(
+            surface,
+            self.settings_button_image,
+            self.settings_button_rect,
+            hovered=self.settings_button_rect.collidepoint(mouse_pos),
+        )
+
+    def _draw_image_button(
+        self,
+        surface: pygame.Surface,
+        image: pygame.Surface,
+        rect: pygame.Rect,
+        hovered: bool,
+    ) -> None:
+        surface.blit(image, rect.topleft)
+        if hovered:
+            hover_overlay = pygame.Surface((rect.width, rect.height), pygame.SRCALPHA)
+            hover_overlay.fill((255, 255, 255, 28))
+            surface.blit(hover_overlay, rect.topleft)
 
     def _open_settings_dialog(self) -> None:
         def persist_settings(settings: GameSettings) -> None:
