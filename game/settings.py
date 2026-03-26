@@ -4,12 +4,14 @@ from dataclasses import dataclass
 from enum import Enum
 import tkinter as tk
 from tkinter import ttk
+from typing import Callable
 
 
 class Difficulty(str, Enum):
     NOVICE = "novice"
     AMATEUR = "amateur"
     PROFESSIONAL = "professional"
+    CUSTOM = "custom"
 
 
 DIFFICULTY_LABELS: dict[Difficulty, str] = {
@@ -47,14 +49,14 @@ class GameSettings:
     reaction_ms: int = DIFFICULTY_PRESETS[Difficulty.NOVICE].reaction_ms
 
 
-def open_settings_window(current: GameSettings) -> GameSettings | None:
+def open_settings_window(current: GameSettings, on_save_to_file: Callable[[GameSettings], None]) -> GameSettings | None:
     result: GameSettings | None = None
 
     root = tk.Tk()
     root.title("Налаштування")
     root.resizable(False, False)
 
-    difficulty_var = tk.StringVar(value=current.difficulty.value)
+    difficulty_var = tk.StringVar(value=_difficulty_for_radio(current).value)
     music_var = tk.BooleanVar(value=current.music_enabled)
     effects_var = tk.BooleanVar(value=current.effects_enabled)
     enemy_count_var = tk.StringVar(value=str(_clamp_enemy_count(current.enemy_count)))
@@ -73,7 +75,7 @@ def open_settings_window(current: GameSettings) -> GameSettings | None:
         reaction_ms_var.set(preset.reaction_ms)
 
     row = 0
-    for difficulty in Difficulty:
+    for difficulty in (Difficulty.NOVICE, Difficulty.AMATEUR, Difficulty.PROFESSIONAL):
         ttk.Radiobutton(
             difficulty_group,
             text=DIFFICULTY_LABELS[difficulty],
@@ -89,7 +91,15 @@ def open_settings_window(current: GameSettings) -> GameSettings | None:
     ttk.Button(
         advanced_group,
         text="Відкрити розширені налаштування",
-        command=lambda: _open_advanced_window(root, enemy_count_var, reaction_ms_var),
+        command=lambda: _open_advanced_window(
+            parent=root,
+            difficulty_var=difficulty_var,
+            music_var=music_var,
+            effects_var=effects_var,
+            enemy_count_var=enemy_count_var,
+            reaction_ms_var=reaction_ms_var,
+            on_save_to_file=on_save_to_file,
+        ),
     ).grid(row=0, column=0, sticky="w")
 
     audio_group = ttk.LabelFrame(container, text="Звук", padding=10)
@@ -101,21 +111,17 @@ def open_settings_window(current: GameSettings) -> GameSettings | None:
     actions = ttk.Frame(container)
     actions.grid(row=3, column=0, sticky="e", pady=(12, 0))
 
-    def on_apply() -> None:
+    def on_save() -> None:
         nonlocal result
-        result = GameSettings(
-            difficulty=Difficulty(difficulty_var.get()),
-            music_enabled=bool(music_var.get()),
-            effects_enabled=bool(effects_var.get()),
-            enemy_count=_clamp_enemy_count(_safe_int(enemy_count_var.get(), current.enemy_count)),
-            reaction_ms=_clamp_reaction_ms(reaction_ms_var.get()),
-        )
+        snapshot = _build_settings_snapshot(difficulty_var, music_var, effects_var, enemy_count_var, reaction_ms_var, current)
+        on_save_to_file(snapshot)
+        result = snapshot
         root.destroy()
 
     def on_cancel() -> None:
         root.destroy()
 
-    ttk.Button(actions, text="Застосувати", command=on_apply).grid(row=0, column=0, padx=(0, 8))
+    ttk.Button(actions, text="Зберегти", command=on_save).grid(row=0, column=0, padx=(0, 8))
     ttk.Button(actions, text="Скасувати", command=on_cancel).grid(row=0, column=1)
 
     root.protocol("WM_DELETE_WINDOW", on_cancel)
@@ -125,7 +131,15 @@ def open_settings_window(current: GameSettings) -> GameSettings | None:
     return result
 
 
-def _open_advanced_window(parent: tk.Tk, enemy_count_var: tk.StringVar, reaction_ms_var: tk.IntVar) -> None:
+def _open_advanced_window(
+    parent: tk.Tk,
+    difficulty_var: tk.StringVar,
+    music_var: tk.BooleanVar,
+    effects_var: tk.BooleanVar,
+    enemy_count_var: tk.StringVar,
+    reaction_ms_var: tk.IntVar,
+    on_save_to_file: Callable[[GameSettings], None],
+) -> None:
     advanced = tk.Toplevel(parent)
     advanced.title("Розширені налаштування")
     advanced.resizable(False, False)
@@ -208,10 +222,21 @@ def _open_advanced_window(parent: tk.Tk, enemy_count_var: tk.StringVar, reaction
 
     buttons = ttk.Frame(frame)
     buttons.grid(row=1, column=0, sticky="e", pady=(10, 0))
-    ttk.Button(buttons, text="Закрити", command=lambda: _close_advanced(advanced, enemy_count_var, reaction_ms_var)).grid(
-        row=0,
-        column=0,
-    )
+
+    def on_advanced_save() -> None:
+        snapshot = _build_settings_snapshot(
+            difficulty_var,
+            music_var,
+            effects_var,
+            enemy_count_var,
+            reaction_ms_var,
+            GameSettings(),
+        )
+        on_save_to_file(snapshot)
+        advanced.destroy()
+
+    ttk.Button(buttons, text="Зберегти", command=on_advanced_save).grid(row=0, column=0, padx=(0, 8))
+    ttk.Button(buttons, text="Скасувати", command=advanced.destroy).grid(row=0, column=1)
 
     _center_window(advanced, width=470, height=320)
     advanced.transient(parent)
@@ -219,17 +244,50 @@ def _open_advanced_window(parent: tk.Tk, enemy_count_var: tk.StringVar, reaction
     advanced.focus_set()
 
 
+def _build_settings_snapshot(
+    difficulty_var: tk.StringVar,
+    music_var: tk.BooleanVar,
+    effects_var: tk.BooleanVar,
+    enemy_count_var: tk.StringVar,
+    reaction_ms_var: tk.IntVar,
+    fallback: GameSettings,
+) -> GameSettings:
+    enemy_count = _clamp_enemy_count(_safe_int(enemy_count_var.get(), fallback.enemy_count))
+    reaction_ms = _clamp_reaction_ms(reaction_ms_var.get())
+
+    selected = Difficulty(difficulty_var.get())
+    preset = DIFFICULTY_PRESETS[selected]
+
+    if enemy_count != preset.enemy_count or reaction_ms != preset.reaction_ms:
+        difficulty = Difficulty.CUSTOM
+    else:
+        difficulty = selected
+
+    return GameSettings(
+        difficulty=difficulty,
+        music_enabled=bool(music_var.get()),
+        effects_enabled=bool(effects_var.get()),
+        enemy_count=enemy_count,
+        reaction_ms=reaction_ms,
+    )
+
+
+def _difficulty_for_radio(current: GameSettings) -> Difficulty:
+    if current.difficulty in (Difficulty.NOVICE, Difficulty.AMATEUR, Difficulty.PROFESSIONAL):
+        return current.difficulty
+
+    for difficulty, preset in DIFFICULTY_PRESETS.items():
+        if current.enemy_count == preset.enemy_count and current.reaction_ms == preset.reaction_ms:
+            return difficulty
+
+    return Difficulty.NOVICE
+
+
 def _sanitize_enemy_entry(enemy_count_var: tk.StringVar) -> None:
     raw = enemy_count_var.get()
     digits_only = "".join(ch for ch in raw if ch.isdigit())
     if digits_only != raw:
         enemy_count_var.set(digits_only)
-
-
-def _close_advanced(window: tk.Toplevel, enemy_count_var: tk.StringVar, reaction_ms_var: tk.IntVar) -> None:
-    enemy_count_var.set(str(_clamp_enemy_count(_safe_int(enemy_count_var.get(), MIN_ENEMY_COUNT))))
-    reaction_ms_var.set(_clamp_reaction_ms(reaction_ms_var.get()))
-    window.destroy()
 
 
 def _safe_int(raw: str, fallback: int) -> int:

@@ -3,7 +3,7 @@ from __future__ import annotations
 import pygame
 
 from game.scenes.base import BaseScene
-from game.settings import open_settings_window
+from game.settings import GameSettings, open_settings_window
 from game.ui import Button, ButtonStyle
 
 
@@ -75,13 +75,25 @@ class SplashScene(BaseScene):
         self.settings_button.draw(surface, self.menu_font, self.settings_button.hit_test(mouse_pos))
 
     def _open_settings_dialog(self) -> None:
-        updated = open_settings_window(self.context.settings)
+        def persist_settings(settings: GameSettings) -> None:
+            self._apply_settings(settings)
+            self.context.save_manager.save_from_state(self.context.settings, self.context.progress)
+
+        updated = open_settings_window(
+            self.context.settings,
+            on_save_to_file=persist_settings,
+        )
         if updated is None:
             return
 
+        self._apply_settings(updated)
+
+    def _apply_settings(self, updated: GameSettings) -> None:
         self.context.settings.difficulty = updated.difficulty
         self.context.settings.music_enabled = updated.music_enabled
         self.context.settings.effects_enabled = updated.effects_enabled
+        self.context.settings.enemy_count = updated.enemy_count
+        self.context.settings.reaction_ms = updated.reaction_ms
 
         self.context.audio.set_toggles(
             music_enabled=self.context.settings.music_enabled,

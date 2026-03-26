@@ -18,6 +18,8 @@ class LevelOne(BaseLevel):
         self.target_pos = (screen_size[0] // 2, screen_size[1] // 2)
 
         self.enemies_down = 0
+        self.hits_count = 0
+        self.misses_count = 0
         self.time_left = reaction_time
         self.enemy_ready_delay = 0.8
         self.enemy_visible = False
@@ -47,6 +49,7 @@ class LevelOne(BaseLevel):
             dx = event.pos[0] - self.target_pos[0]
             dy = event.pos[1] - self.target_pos[1]
             if dx * dx + dy * dy <= self.target_radius * self.target_radius:
+                self.hits_count += 1
                 self.enemies_down += 1
                 if self.enemies_down >= self.enemy_count:
                     self.finished = True
@@ -54,6 +57,7 @@ class LevelOne(BaseLevel):
                 else:
                     self._start_next_enemy()
             else:
+                self.misses_count += 1
                 self.finished = True
                 self.result = LevelResult(won=False, reason="missed_shot")
 
@@ -70,6 +74,7 @@ class LevelOne(BaseLevel):
 
         self.time_left -= dt
         if self.time_left <= 0:
+            self.misses_count += 1
             self.finished = True
             self.result = LevelResult(won=False, reason="too_slow")
 

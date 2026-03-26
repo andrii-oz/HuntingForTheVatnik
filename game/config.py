@@ -17,6 +17,7 @@ class GameConfig:
     sound_dir: str = "sound"
     default_level_id: str = "level_one"
     reaction_time_sec: float = 1.8
+    save_file: str = "savegame.json"
 
 
 DISPLAY = DisplayConfig()

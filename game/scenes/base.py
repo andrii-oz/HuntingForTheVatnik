@@ -53,10 +53,13 @@ class SceneContext:
     input_manager: "InputManager"
     level_registry: "LevelRegistry"
     settings: "GameSettings"
+    progress: "GameProgress"
+    save_manager: "SaveManager"
 
 
 from game.assets import AssetManager
 from game.audio import AudioManager
 from game.input import InputManager
 from game.levels.level_registry import LevelRegistry
+from game.persistence import GameProgress, SaveManager
 from game.settings import GameSettings
