@@ -12,13 +12,12 @@ class GameplayScene(BaseScene):
     def __init__(self, context) -> None:
         super().__init__(context)
         self.level_id = GAME.default_level_id
-        preset = self.context.settings.preset
 
         self.level = self.context.level_registry.create(
             self.level_id,
             screen_size=self.context.screen_size,
-            reaction_time=preset.reaction_seconds,
-            enemy_count=preset.enemy_count,
+            reaction_time=self.context.settings.reaction_ms / 1000.0,
+            enemy_count=self.context.settings.enemy_count,
         )
         self.level.start()
 
