@@ -48,7 +48,6 @@ class GameplayScene(BaseScene):
 
     def render(self, surface: pygame.Surface) -> None:
         self.level.render(surface)
-        self._draw_crosshair(surface)
 
     def runtime_progress_snapshot(self) -> GameProgress:
         return GameProgress(
@@ -56,9 +55,3 @@ class GameplayScene(BaseScene):
             hits=self.base_hits + self.level.hits_count,
             misses=self.base_misses + self.level.misses_count,
         )
-
-    def _draw_crosshair(self, surface: pygame.Surface) -> None:
-        x, y = self.context.input_manager.mouse_pos
-        pygame.draw.circle(surface, (20, 20, 20), (x, y), 20, width=2)
-        pygame.draw.line(surface, (20, 20, 20), (x - 26, y), (x + 26, y), width=2)
-        pygame.draw.line(surface, (20, 20, 20), (x, y - 26), (x, y + 26), width=2)

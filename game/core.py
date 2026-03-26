@@ -7,6 +7,7 @@ import pygame
 from game.assets import AssetManager
 from game.audio import AudioManager
 from game.config import DISPLAY, GAME
+from game.cursor import CursorManager
 from game.input import InputManager
 from game.levels import build_level_registry
 from game.persistence import GameProgress, SaveManager
@@ -27,6 +28,7 @@ def run_game() -> None:
     assets = AssetManager(GAME.root_dir)
     audio = AudioManager(GAME.root_dir)
     input_manager = InputManager()
+    cursor_manager = CursorManager(assets, input_manager)
     level_registry = build_level_registry()
 
     save_manager = SaveManager(GAME.root_dir / GAME.save_file)
@@ -76,8 +78,10 @@ def run_game() -> None:
         if not running:
             continue
 
+        cursor_manager.update(dt)
         current_scene.update(dt)
         current_scene.render(screen)
+        cursor_manager.render(screen)
         pygame.display.flip()
 
         signal = current_scene.consume_signal()
